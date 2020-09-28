@@ -111,7 +111,7 @@
         deploy = { branch, profile }: {
           label = "Deploy ${branch} ${profile}";
           branches = [ branch ];
-          command = "sshUser=deploy fastConnection=true ${
+          command = "sshUser=deploy fastConnection=true NIX_PATH=nixpkgs=${inputs.nixpkgs} ${
               inputs.deploy.defaultApp.${system}.program
             } .#${branch}.${profile}";
           inherit agents;
