@@ -111,7 +111,8 @@
         deploy = { branch, profile }: {
           label = "Deploy ${branch} ${profile}";
           branches = [ branch ];
-          command = "sshUser=deploy fastConnection=true NIX_PATH=nixpkgs=${inputs.nixpkgs} ${
+          command =
+            "sshUser=deploy fastConnection=true NIX_PATH=nixpkgs=${inputs.nixpkgs} ${
               inputs.deploy.defaultApp.${system}.program
             } .#${branch}.${profile}";
           inherit agents;
@@ -122,8 +123,10 @@
         steps = buildSteps ++ checkSteps ++ deploySteps;
       in { inherit steps; };
 
-    mkPipelineFile = flake:
-      builtins.toFile "pipeline.yml" (builtins.toJSON (self.mkPipeline flake));
+    mkPipelineFile = { deployAttr, checks, deployFromPipeline, agents ? [ ]
+      , system ? "x86_64-linux" }@flake:
+      nixpkgs.legacyPackages.${system}.writeText "pipeline.yml"
+      (builtins.toJSON (self.mkPipeline flake));
   };
 
 }
