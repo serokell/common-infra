@@ -66,14 +66,14 @@
         } // builtins.mapAttrs mkPackageProfile packages;
       };
 
-    mkPipeline = { deployAttr, checks, deployFromPipeline, agents ? [ ]
+    mkPipeline = { deploy, packages, checks, deployFromPipeline, agents ? [ ]
       , system ? "x86_64-linux" }:
       let
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         inherit (pkgs) lib;
         inherit (lib)
           getAttrFromPath collect concatStringsSep mapAttrsRecursiveCond
-          splitString last;
+          optionalAttrs optionalString concatMapStringsSep splitString last head;
         inherit (builtins)
           length filter elemAt listToAttrs unsafeDiscardStringContext;
 
@@ -81,19 +81,30 @@
           mapAttrsRecursiveCond (x: !(lib.isDerivation x)) (path: _: path);
         names = attrs: collect lib.isList (namesTree attrs);
 
-        packageNames = filter (x: last x == "path") (names deployAttr);
+        buildable = { inherit packages deploy; };
+
+        packageNames = filter (x: last x == "path" || head x == "packages") (names buildable);
 
         pathByValue = listToAttrs (map (path: {
           name = unsafeDiscardStringContext
-            (getAttrFromPath path deployAttr).drvPath;
+            (getAttrFromPath path buildable).drvPath;
           value = path;
         }) packageNames);
 
-        build = comp: {
-          label = "Build ${elemAt comp 1}.${elemAt comp 3}";
-          command = "nix-build -A deploy.${concatStringsSep "." comp}";
-          inherit agents;
-        };
+        drvFromPath = path: getAttrFromPath path buildable;
+
+        build = comp:
+          let
+            drv = drvFromPath comp;
+            hasArtifacts = drv ? meta && drv.meta ? artifacts;
+            displayName = if head comp == "packages" then elemAt comp 2 else "${elemAt comp 2}.${elemAt comp 4}";
+          in {
+            label = "Build ${displayName}";
+            command = "nix-build -A ${concatStringsSep "." comp}";
+            inherit agents;
+          } // optionalAttrs hasArtifacts {
+            artifact_paths = map (art: "result${art}") drv.meta.artifacts;
+          };
 
         buildSteps = map build (builtins.attrValues pathByValue);
 
@@ -108,7 +119,7 @@
 
         checkSteps = map check checkNames;
 
-        deploy = { branch, profile }: {
+        doDeploy = { branch, profile }: {
           label = "Deploy ${branch} ${profile}";
           branches = [ branch ];
           command =
@@ -118,12 +129,12 @@
           inherit agents;
         };
 
-        deploySteps = [ "wait" ] ++ map deploy deployFromPipeline;
+        deploySteps = [ "wait" ] ++ map doDeploy deployFromPipeline;
 
         steps = buildSteps ++ checkSteps ++ deploySteps;
       in { inherit steps; };
 
-    mkPipelineFile = { deployAttr, checks, deployFromPipeline, agents ? [ ]
+    mkPipelineFile = { deploy, packages, checks, deployFromPipeline, agents ? [ ]
       , system ? "x86_64-linux" }@flake:
       nixpkgs.legacyPackages.${system}.writeText "pipeline.yml"
       (builtins.toJSON (self.mkPipeline flake));
