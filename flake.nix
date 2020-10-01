@@ -67,27 +67,39 @@
       };
 
     mkPipeline = { deploy, packages, checks, deployFromPipeline, agents ? [ ]
-      , system ? "x86_64-linux" }:
+      , systems ? [ "x86_64-linux" ] }@args:
       let
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         inherit (pkgs) lib;
         inherit (lib)
           getAttrFromPath collect concatStringsSep mapAttrsRecursiveCond
-          optionalAttrs optionalString concatMapStringsSep splitString last head;
+          optionalAttrs optionalString concatMapStringsSep splitString last head
+          optional;
         inherit (builtins)
-          length filter elemAt listToAttrs unsafeDiscardStringContext;
+          concatMap length filter elemAt listToAttrs unsafeDiscardStringContext;
 
         namesTree =
           mapAttrsRecursiveCond (x: !(lib.isDerivation x)) (path: _: path);
         names = attrs: collect lib.isList (namesTree attrs);
 
-        buildable = { inherit packages deploy; };
+        filterNative = what:
+          listToAttrs (concatMap (system:
+            optional (args.${what} ? ${system}) {
+              name = system;
+              value = args.${what}.${system};
+            }) systems);
 
-        packageNames = filter (x: last x == "path" || head x == "packages") (names buildable);
+        buildable = {
+          inherit deploy;
+          packages = filterNative "packages";
+        };
+
+        packageNames = filter (x: last x == "path" || head x == "packages")
+          (names buildable);
 
         pathByValue = listToAttrs (map (path: {
-          name = unsafeDiscardStringContext
-            (getAttrFromPath path buildable).drvPath;
+          name =
+            unsafeDiscardStringContext (getAttrFromPath path buildable).drvPath;
           value = path;
         }) packageNames);
 
@@ -97,7 +109,10 @@
           let
             drv = drvFromPath comp;
             hasArtifacts = drv ? meta && drv.meta ? artifacts;
-            displayName = if head comp == "packages" then elemAt comp 2 else "${elemAt comp 2}.${elemAt comp 4}";
+            displayName = if head comp == "packages" then
+              elemAt comp 2
+            else
+              "${elemAt comp 2}.${elemAt comp 4}";
           in {
             label = "Build ${displayName}";
             command = "nix-build -A ${concatStringsSep "." comp}";
@@ -108,12 +123,11 @@
 
         buildSteps = map build (builtins.attrValues pathByValue);
 
-        checkNames = names checks;
+        checkNames = names { checks = filterNative "checks"; };
 
         check = name: {
           label = elemAt name 1;
-          command =
-            "nix-build --no-out-link -A checks.${concatStringsSep "." name}";
+          command = "nix-build --no-out-link -A ${concatStringsSep "." name}";
           inherit agents;
         };
 
@@ -124,7 +138,7 @@
           branches = [ branch ];
           command =
             "sshUser=deploy fastConnection=true NIX_PATH=nixpkgs=${inputs.nixpkgs} ${
-              inputs.deploy.defaultApp.${system}.program
+              inputs.deploy.defaultApp.${head systems}.program
             } .#${branch}.${profile}";
           inherit agents;
         };
@@ -134,9 +148,9 @@
         steps = buildSteps ++ checkSteps ++ deploySteps;
       in { inherit steps; };
 
-    mkPipelineFile = { deploy, packages, checks, deployFromPipeline, agents ? [ ]
-      , system ? "x86_64-linux" }@flake:
-      nixpkgs.legacyPackages.${system}.writeText "pipeline.yml"
+    mkPipelineFile = { deploy, packages, checks, deployFromPipeline
+      , agents ? [ ], systems ? [ "x86_64-linux" ] }@flake:
+      nixpkgs.legacyPackages.${builtins.head systems}.writeText "pipeline.yml"
       (builtins.toJSON (self.mkPipeline flake));
   };
 
