@@ -126,7 +126,7 @@
         checkNames = names { checks = filterNative "checks"; };
 
         check = name: {
-          label = elemAt name 1;
+          label = elemAt name 2;
           command = "nix-build --no-out-link -A ${concatStringsSep "." name}";
           inherit agents;
         };
