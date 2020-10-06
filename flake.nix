@@ -1,6 +1,6 @@
 {
   inputs.deploy = {
-    url = "github:serokell/deploy";
+    url = "github:notgne2/deploy-rs";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -48,20 +48,21 @@
         hostname =
           "${nixos-system.config.networking.hostName}.${nixos-system.config.networking.domain}";
 
-        mkPackageProfile = _: pkg:
-          {
-            path = pkg;
-            user = "deploy";
-          } // lib.optionalAttrs (!isNull (serviceName pkg)) {
-            activate = "sudo ${restart pkg}";
-          };
+        mkPackageProfile = _: pkg: {
+          path = if !isNull (serviceName pkg) then
+            deploy.lib.${system}.setActivate pkg "sudo ${restart pkg}"
+          else
+            pkg;
+          user = "deploy";
+        };
       in {
         inherit hostname;
         profiles = {
           system = {
-            path = nixos-system.config.system.build.toplevel;
+            path =
+              deploy.lib.${system}.setActivate nixos-system.config.system.build.toplevel
+              "$PROFILE/bin/switch-to-configuration switch";
             user = "root";
-            activate = "$PROFILE/bin/switch-to-configuration switch";
           };
         } // builtins.mapAttrs mkPackageProfile packages;
       };
@@ -137,9 +138,9 @@
           label = "Deploy ${branch} ${profile}";
           branches = [ branch ];
           command =
-            "sshUser=deploy fastConnection=true NIX_PATH=nixpkgs=${inputs.nixpkgs} ${
+            "${
               inputs.deploy.defaultApp.${head systems}.program
-            } .#${branch}.${profile}";
+            } .#${branch}.${profile} --ssh-user deploy --fast-connection true";
           inherit agents;
         };
 
