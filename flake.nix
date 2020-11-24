@@ -67,7 +67,7 @@
         } // builtins.mapAttrs mkPackageProfile packages;
       };
 
-    mkPipeline = { deploy, packages, checks, deployFromPipeline, agents ? [ ]
+    mkPipeline = { deploy ? { nodes = { }; }, packages ? { }, checks ? { }, deployFromPipeline, agents ? [ ]
       , systems ? [ "x86_64-linux" ] }@args:
       let
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
@@ -134,13 +134,13 @@
 
         checkSteps = map check checkNames;
 
-        doDeploy = { branch, profile }: {
+        doDeploy = { branch, profile, user ? "deploy", ... }: {
           label = "Deploy ${branch} ${profile}";
           branches = [ branch ];
           command =
             "${
               inputs.deploy.defaultApp.${head systems}.program
-            } .#${branch}.${profile} --ssh-user deploy --fast-connection true";
+            } .#${branch}.${profile} --ssh-user ${user} --fast-connection true";
           inherit agents;
         };
 
@@ -149,8 +149,7 @@
         steps = buildSteps ++ checkSteps ++ deploySteps;
       in { inherit steps; };
 
-    mkPipelineFile = { deploy, packages, checks, deployFromPipeline
-      , agents ? [ ], systems ? [ "x86_64-linux" ] }@flake:
+    mkPipelineFile = { systems ? [ "x86_64-linux" ], ... }@flake:
       nixpkgs.legacyPackages.${builtins.head systems}.writeText "pipeline.yml"
       (builtins.toJSON (self.mkPipeline flake));
   };
