@@ -50,9 +50,9 @@
 
         mkPackageProfile = _: pkg: {
           path = if !isNull (serviceName pkg) then
-            deploy.lib.${system}.setActivate pkg "sudo ${restart pkg}"
+            deploy.lib.${system}.activate.custom pkg "sudo ${restart pkg}"
           else
-            pkg;
+            deploy.lib.${system}.activate.noop pkg;
           user = "deploy";
         };
       in {
@@ -60,8 +60,7 @@
         profiles = {
           system = {
             path =
-              deploy.lib.${system}.setActivate nixos-system.config.system.build.toplevel
-              "$PROFILE/bin/switch-to-configuration switch";
+              deploy.lib.${system}.activate.nixos nixos-system;
             user = "root";
           };
         } // builtins.mapAttrs mkPackageProfile packages;
