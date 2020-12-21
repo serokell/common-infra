@@ -12,13 +12,13 @@
       "locked": {
         "lastModified": 1608488342,
         "narHash": "sha256-JhEoKKmETJsdgS+kjT1rACnlM50q/JdVNyAfIbbVQcc=",
-        "owner": "notgne2",
+        "owner": "serokell",
         "repo": "deploy-rs",
         "rev": "91e934fd9e1e06044f75a3e3ad998813c2a90fb5",
         "type": "github"
       },
       "original": {
-        "owner": "notgne2",
+        "owner": "serokell",
         "repo": "deploy-rs",
         "type": "github"
       }
