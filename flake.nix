@@ -67,7 +67,7 @@
       };
 
     mkPipeline = { deploy ? { nodes = { }; }, packages ? { }, checks ? { }, deployFromPipeline, agents ? [ ]
-      , systems ? [ "x86_64-linux" ] }@args:
+      , systems ? [ "x86_64-linux" ], ... }@args:
       let
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         inherit (pkgs) lib;
