@@ -67,7 +67,7 @@
       };
 
     mkPipeline = { deploy ? { nodes = { }; }, packages ? { }, checks ? { }, deployFromPipeline ? { }, agents ? [ ]
-      , systems ? [ "x86_64-linux" ], ... }@args:
+      , systems ? [ "x86_64-linux" ], ciSystem ? "x86_64-linux", ... }@args:
       let
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         inherit (pkgs) lib;
@@ -77,6 +77,8 @@
           optional;
         inherit (builtins)
           concatMap length filter elemAt listToAttrs unsafeDiscardStringContext;
+
+        nixBinPath = optionalString (packages ? ${ciSystem}.nix) "${packages.${ciSystem}.nix}/bin/";
 
         namesTree =
           mapAttrsRecursiveCond (x: !(lib.isDerivation x)) (path: _: path);
@@ -115,7 +117,7 @@
               "${elemAt comp 2}.${elemAt comp 4}";
           in {
             label = "Build ${displayName}";
-            command = "nix-build -A ${concatStringsSep "." comp}";
+            command = "${nixBinPath}nix-build -A ${concatStringsSep "." comp}";
             inherit agents;
           } // optionalAttrs hasArtifacts {
             artifact_paths = map (art: "result${art}") drv.meta.artifacts;
@@ -127,7 +129,7 @@
 
         check = name: {
           label = elemAt name 2;
-          command = "nix-build --no-out-link -A ${concatStringsSep "." name}";
+          command = "${nixBinPath}nix-build --no-out-link -A ${concatStringsSep "." name}";
           inherit agents;
         };
 
