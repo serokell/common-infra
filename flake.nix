@@ -117,7 +117,7 @@
               "${elemAt comp 2}.${elemAt comp 4}";
           in {
             label = "Build ${displayName}";
-            command = "${nixBinPath}nix-build -A ${concatStringsSep "." comp}";
+            command = "${nixBinPath}nix-build --no-out-link -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' comp}"''}";
             inherit agents;
           } // optionalAttrs hasArtifacts {
             artifact_paths = map (art: "result${art}") drv.meta.artifacts;
@@ -129,19 +129,19 @@
 
         check = name: {
           label = elemAt name 2;
-          command = "${nixBinPath}nix-build --no-out-link -A ${concatStringsSep "." name}";
+            command = "${nixBinPath}nix-build --no-out-link -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' name}"''}";
           inherit agents;
         };
 
         checkSteps = map check checkNames;
 
-        doDeploy = { branch, profile, user ? "deploy", ... }: {
+        doDeploy = { branch, node ? branch, profile, user ? "deploy", ... }: {
           label = "Deploy ${branch} ${profile}";
           branches = [ branch ];
           command =
             "${
               inputs.deploy.defaultApp.${head systems}.program
-            } .#${branch}.${profile} --ssh-user ${user} --fast-connection true";
+            } ${lib.escapeShellArg ''.#"${node}"."${profile}"''} --ssh-user ${lib.escapeShellArg user} --fast-connection true";
           inherit agents;
         };
 
