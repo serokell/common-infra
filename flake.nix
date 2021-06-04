@@ -117,7 +117,7 @@
               "${elemAt comp 2}.${elemAt comp 4}";
           in {
             label = "Build ${displayName}";
-            command = "${nixBinPath}nix-build --no-out-link -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' comp}"''}";
+            command = "${nixBinPath}nix-build -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' comp}"''}";
             inherit agents;
           } // optionalAttrs hasArtifacts {
             artifact_paths = map (art: "result${art}") drv.meta.artifacts;
@@ -129,7 +129,7 @@
 
         check = name: {
           label = elemAt name 2;
-            command = "${nixBinPath}nix-build --no-out-link -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' name}"''}";
+            command = "${nixBinPath}nix-build -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' name}"''}";
           inherit agents;
         };
 
