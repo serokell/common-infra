@@ -74,9 +74,11 @@
         inherit (lib)
           getAttrFromPath collect concatStringsSep mapAttrsRecursiveCond
           optionalAttrs optionalString concatMapStringsSep splitString last head
-          optional;
+          optional optionals escapeShellArg;
         inherit (builtins)
           concatMap length filter elemAt listToAttrs unsafeDiscardStringContext;
+
+        escapeAttrPath = path: escapeShellArg ''"${concatStringsSep ''"."'' path}"'';
 
         nixBinPath = optionalString (packages ? ${ciSystem}.nix) "${packages.${ciSystem}.nix}/bin/";
 
@@ -117,7 +119,7 @@
               "${elemAt comp 2}.${elemAt comp 4}";
           in {
             label = "Build ${displayName}";
-            command = "${nixBinPath}nix-build -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' comp}"''}";
+            command = "${nixBinPath}nix-build --no-out-link -A ${escapeAttrPath comp}";
             inherit agents;
           } // optionalAttrs hasArtifacts {
             artifact_paths = map (art: "result${art}") drv.meta.artifacts;
@@ -129,7 +131,7 @@
 
         check = name: {
           label = elemAt name 2;
-            command = "${nixBinPath}nix-build -A ${lib.escapeShellArg ''"${concatStringsSep ''"."'' name}"''}";
+            command = "${nixBinPath}nix-build --no-out-link -A ${escapeAttrPath name}";
           inherit agents;
         };
 
@@ -147,7 +149,18 @@
 
         deploySteps = [ "wait" ] ++ map doDeploy deployFromPipeline;
 
-        steps = buildSteps ++ checkSteps ++ deploySteps;
+        doRelease = {
+          label = "Release";
+          branches = args.releaseBranches or [ "master" ];
+          command = ''
+            nix-build -A 'release.${ciSystem}'
+            ${inputs.nixpkgs.legacyPackages.${ciSystem}.github-cli}/bin/gh release create auto-release -d -t "Automatic release" -F result/notes.md ./result/*
+          '';
+        };
+
+        releaseSteps = optionals (args ? release) [ "wait" doRelease ];
+
+        steps = buildSteps ++ checkSteps ++ releaseSteps ++ deploySteps;
       in { inherit steps; };
 
     mkPipelineFile = { systems ? [ "x86_64-linux" ], ... }@flake:
