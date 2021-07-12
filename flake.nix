@@ -154,7 +154,13 @@
           branches = args.releaseBranches or [ "master" ];
           command = ''
             nix-build -A 'release.${ciSystem}'
-            ${inputs.nixpkgs.legacyPackages.${ciSystem}.github-cli}/bin/gh release create auto-release -d -t "Automatic release" -F result/notes.md ./result/*
+            export PATH='${inputs.nixpkgs.legacyPackages.${ciSystem}.github-cli}/bin':"$PATH"
+            date=$(git show -s --format=%ci | cut -d\  -f1)
+            gh release create $date -d -t "Automatic release on $date" -F result/notes.md ./result/*
+            # Clean up old draft releases
+            for draft_tag in $(gh release list -L 1000 | grep Draft | tail +${args.keepReleaseDrafts or 1} | cut -f3 | grep -o '\([^)]*\)'); do
+              gh release delete -y $draft_tag
+            done
           '';
         };
 
