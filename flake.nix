@@ -155,11 +155,13 @@
           command = pkgs.writeShellScript "release" ''
             export PATH='${inputs.nixpkgs.legacyPackages.${ciSystem}.github-cli}/bin':"$PATH"
             nix-build -A 'release.${ciSystem}'
-            date=$(git show -s --format=%ci | cut -d\  -f1)
-            gh release create $date -d -t "Automatic release on $date" -F result/notes.md ./result/*
+            timestamp=$(git show -s --format=%ci)
+            date=$(cut -d\  -f1 <<< $timestamp)
+            time=$(cut -d\  -f2 <<< $timestamp)
+            gh release create "$date"T"$time" -d -t "Automatic release on $date" -F result/notes.md ./result/*
             # Clean up old draft releases
-            for draft_tag in $(gh release list -L 1000 | grep Draft | tail +${toString (args.keepReleaseDrafts or 1)} | cut -f3 | grep -o '\([^)]*\)'); do
-              gh release delete -y $draft_tag
+            for draft_tag in $(gh release list -L 1000 | grep Draft | tail +${toString (args.keepReleaseDrafts or 1)} | cut -f3); do
+              gh release delete -y "''${draft_tag:1:-1}"
             done
           '';
         };
