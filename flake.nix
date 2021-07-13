@@ -152,9 +152,9 @@
         doRelease = {
           label = "Release";
           branches = args.releaseBranches or [ "master" ];
-          command = ''
-            nix-build -A 'release.${ciSystem}'
+          command = pkgs.writeShellScript "release" ''
             export PATH='${inputs.nixpkgs.legacyPackages.${ciSystem}.github-cli}/bin':"$PATH"
+            nix-build -A 'release.${ciSystem}'
             date=$(git show -s --format=%ci | cut -d\  -f1)
             gh release create $date -d -t "Automatic release on $date" -F result/notes.md ./result/*
             # Clean up old draft releases
