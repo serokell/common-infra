@@ -160,7 +160,7 @@
             time=$(cut -d\  -f2 <<< $timestamp)
             gh release create "$date"T"$time" -d -t "Automatic release on $date" -F result/notes.md ./result/*
             # Clean up old draft releases
-            for draft_tag in $(gh release list -L 1000 | grep Draft | tail +${toString ((args.keepReleaseDrafts + 1) or 2)} | cut -f3); do
+            for draft_tag in $(gh release list -L 1000 | grep Draft | tail +${toString ((args.keepReleaseDrafts or 1) + 1)} | cut -f3); do
               gh release delete -y "$draft_tag"
             done
           '';
