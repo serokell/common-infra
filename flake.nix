@@ -119,7 +119,7 @@
               "${elemAt comp 2}.${elemAt comp 4}";
           in {
             label = "Build ${displayName}";
-            command = "${nixBinPath}nix-build --no-out-link -A ${escapeAttrPath comp}";
+            command = "${nixBinPath}nix-build -A ${escapeAttrPath comp}";
             inherit agents;
           } // optionalAttrs hasArtifacts {
             artifact_paths = map (art: "result${art}") drv.meta.artifacts;
