@@ -158,7 +158,7 @@
             nix-build -A 'release.${ciSystem}'
             timestamp=$(git show -s --format=%ci)
             date=$(cut -d\  -f1 <<< $timestamp)
-            time=$(cut -d\  -f2 <<< $timestamp | sed s/:/-/)
+            time=$(cut -d\  -f2 <<< $timestamp | sed s/:/-/g)
             gh release create "$date"T"$time" -d -t "Automatic release on $date" -F result/notes.md ./result/*
             sleep 1
             # Clean up old draft releases
